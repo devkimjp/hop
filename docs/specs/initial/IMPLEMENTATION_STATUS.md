@@ -27,10 +27,10 @@
 * `assets/fonts`의 번들 폰트를 studio host가 로컬에서 제공하도록 HOP 소유 web font loading을 추가했다.
 * studio host dev server가 localhost에만 bind되도록 제한했다.
 * 데스크톱 번들 빌드, workflow artifact 생성, draft GitHub Release 생성을 위한 GitHub Actions workflow를 추가했다.
-* PR workflow trigger가 desktop/studio 코드뿐 아니라 root npm lockfile과 번들 폰트 변경도 감지하도록 했다.
+* PR workflow trigger가 desktop/studio 코드뿐 아니라 root pnpm lockfile과 번들 폰트 변경도 감지하도록 했다.
 * upstream command/type module을 가능한 한 재사용해 HOP studio overlay 범위를 줄였다.
 * upstream `third_party/rhwp`는 clean/read-only 상태를 유지하고, HOP 동작은 app-owned adapter에 두었다.
-* JavaScript dependency lock을 root workspace `package-lock.json`으로 통합했다.
+* JavaScript dependency lock을 root workspace `pnpm-lock.yaml`으로 통합했다.
 
 ## 중요한 public beta 미구현 항목
 
@@ -44,9 +44,9 @@
 
 ## 완료한 검증
 
-* repo root에서 `npm ci`
-* repo root에서 `npm run build:studio`
+* repo root에서 `pnpm install --frozen-lockfile`
+* repo root에서 `pnpm run build:studio`
 * `apps/desktop/src-tauri`에서 `cargo test`
 * `apps/desktop/src-tauri`에서 `cargo clippy -- -D warnings`
-* repo root에서 `npm --workspace apps/desktop run tauri -- build --debug --bundles app`
-* repo root에서 `npm run build:desktop`
+* repo root에서 `pnpm --filter hop-desktop tauri build --debug --bundles app`
+* repo root에서 `pnpm run build:desktop`

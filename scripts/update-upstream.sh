@@ -25,11 +25,11 @@ git -C "$submodule_dir" checkout "$UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
 new_commit="$(git -C "$submodule_dir" rev-parse HEAD)"
 
 if [[ "$RUN_CHECKS" == "1" ]]; then
-  (cd "$repo_root" && npm ci)
-  (cd "$repo_root" && npm run build:studio)
+  (cd "$repo_root" && pnpm install --frozen-lockfile)
+  (cd "$repo_root" && pnpm run build:studio)
   (cd "$repo_root/apps/desktop/src-tauri" && cargo test)
   (cd "$repo_root/apps/desktop/src-tauri" && cargo clippy -- -D warnings)
-  (cd "$repo_root" && npm --workspace apps/desktop run tauri -- build --debug --bundles app)
+  (cd "$repo_root" && pnpm --filter hop-desktop tauri build --debug --bundles app)
 fi
 
 cat <<EOF

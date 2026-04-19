@@ -55,10 +55,10 @@ HOP에 필요한 동작을 upstream이 아직 노출하지 않는다면 먼저 H
 
 upstream 갱신은 최소한 다음 검증을 통과해야 한다.
 
-* repo root에서 `npm ci`
-* repo root에서 `npm run build:studio`
+* repo root에서 `pnpm install --frozen-lockfile`
+* repo root에서 `pnpm run build:studio`
 * `apps/desktop/src-tauri/`에서 `cargo test`
 * `apps/desktop/src-tauri/`에서 `cargo clippy -- -D warnings`
-* repo root에서 `npm --workspace apps/desktop run tauri -- build --debug --bundles app`
+* repo root에서 `pnpm --filter hop-desktop tauri build --debug --bundles app`
 
 public beta 빌드는 여기에 더해 macOS와 Windows 또는 Linux 최소 1개 환경에서 HWP/HWPX 열기, 저장, PDF 내보내기, 인쇄, drag/drop, 다중 창 동작을 smoke test한다.

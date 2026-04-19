@@ -70,3 +70,46 @@ pub fn target_window_label(app: &AppHandle) -> Option<String> {
         .map(|(label, _)| label.clone())
         .or_else(|| windows.keys().next().cloned())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn document_paths_keeps_only_supported_documents() {
+        let a = PathBuf::from("/tmp/a.hwp");
+        let b = PathBuf::from("/tmp/b.HWPX");
+        let paths = document_paths(&[
+            a.clone(),
+            b.clone(),
+            PathBuf::from("/tmp/c.pdf"),
+            PathBuf::from("/tmp/no-extension"),
+        ]);
+
+        assert_eq!(
+            paths,
+            vec![
+                a.to_string_lossy().to_string(),
+                b.to_string_lossy().to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn document_paths_preserves_input_order() {
+        let first = PathBuf::from("/tmp/first.hwp");
+        let second = PathBuf::from("/tmp/second.hwpx");
+        let paths = document_paths(&[
+            first.clone(),
+            second.clone(),
+        ]);
+
+        assert_eq!(
+            paths,
+            vec![
+                first.to_string_lossy().to_string(),
+                second.to_string_lossy().to_string()
+            ]
+        );
+    }
+}

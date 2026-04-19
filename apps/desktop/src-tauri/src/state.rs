@@ -806,4 +806,107 @@ mod tests {
                 .changed
         );
     }
+
+    #[test]
+    fn external_modification_ignores_different_save_target() {
+        let dir = tempfile::tempdir().unwrap();
+        let source_path = dir.path().join("doc.hwp");
+        let target_path = dir.path().join("copy.hwp");
+        atomic_write(&source_path, b"first").unwrap();
+
+        let session = DocumentSession {
+            doc_id: "doc".to_string(),
+            source_path: Some(source_path.clone()),
+            source_format: DocumentFormat::Hwp,
+            source_fingerprint: Some(file_fingerprint(&source_path).unwrap()),
+            dirty: false,
+            revision: 1,
+            core: DocumentCore::new_empty(),
+            page_svg_cache: HashMap::new(),
+        };
+
+        atomic_write(&source_path, b"changed").unwrap();
+        assert!(
+            !session
+                .external_modification_status(Some(&target_path))
+                .unwrap()
+                .changed
+        );
+    }
+
+    #[test]
+    fn external_modification_detects_deleted_source() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("doc.hwp");
+        atomic_write(&path, b"first").unwrap();
+
+        let session = DocumentSession {
+            doc_id: "doc".to_string(),
+            source_path: Some(path.clone()),
+            source_format: DocumentFormat::Hwp,
+            source_fingerprint: Some(file_fingerprint(&path).unwrap()),
+            dirty: false,
+            revision: 1,
+            core: DocumentCore::new_empty(),
+            page_svg_cache: HashMap::new(),
+        };
+
+        std::fs::remove_file(&path).unwrap();
+        let status = session.external_modification_status(Some(&path)).unwrap();
+        assert!(status.changed);
+        assert_eq!(
+            status.reason,
+            Some("원본 파일이 삭제되었거나 이동되었습니다".to_string())
+        );
+    }
+
+    #[test]
+    fn mutation_rejects_stale_revision_before_touching_document() {
+        let mut manager = DocumentSessionManager::default();
+        let opened = manager.create_document().unwrap();
+
+        let error = manager
+            .mutate_document(
+                &opened.doc_id,
+                "insertText",
+                json!({ "sec": 0, "para": 0, "charOffset": 0, "text": "x" }),
+                Some(opened.revision + 1),
+            )
+            .unwrap_err();
+
+        assert!(error.contains("문서 revision이 변경되었습니다"));
+        assert_eq!(manager.session(&opened.doc_id).unwrap().revision, opened.revision);
+        assert!(!manager.session(&opened.doc_id).unwrap().dirty);
+    }
+
+    #[test]
+    fn save_hwp_bytes_rejects_hwpx_target_before_parsing_bytes() {
+        let mut manager = DocumentSessionManager::default();
+        let opened = manager.create_document().unwrap();
+        let target = tempfile::tempdir().unwrap().path().join("doc.hwpx");
+
+        let error = manager
+            .save_hwp_bytes(
+                &opened.doc_id,
+                b"not a hwp document",
+                Some(target),
+                Some(opened.revision),
+                false,
+            )
+            .unwrap_err();
+
+        assert!(error.contains("HWPX 경로에는 HWP 바이트를 저장할 수 없습니다"));
+    }
+
+    #[test]
+    fn close_document_selects_remaining_session_as_active() {
+        let mut manager = DocumentSessionManager::default();
+        let first = manager.create_document().unwrap();
+        let second = manager.create_document().unwrap();
+
+        manager.close_document(&second.doc_id).unwrap();
+
+        assert_eq!(manager.active_doc_id, Some(first.doc_id));
+        assert!(manager.close_document("missing").is_err());
+    }
 }

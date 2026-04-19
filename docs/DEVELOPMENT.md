@@ -8,25 +8,25 @@
 
 ```sh
 git submodule update --init --recursive
-npm ci
+pnpm install --frozen-lockfile
 ```
 
 studio host를 빌드합니다.
 
 ```sh
-npm run build:studio
+pnpm run build:studio
 ```
 
 데스크톱 앱을 개발 모드로 실행합니다.
 
 ```sh
-npm --workspace apps/desktop run dev
+pnpm --filter hop-desktop dev
 ```
 
 debug 번들을 만들 때는 다음 명령을 사용합니다.
 
 ```sh
-npm --workspace apps/desktop run tauri -- build --debug --bundles app
+pnpm --filter hop-desktop tauri build --debug --bundles app
 ```
 
 ## 프로젝트 구조
@@ -74,16 +74,34 @@ public beta 전까지는 아래 항목이 더 필요합니다.
 
 ## 개발 명령
 
+전체 단위 테스트:
+
+```sh
+pnpm test
+```
+
+upstream submodule 갱신 스크립트 테스트:
+
+```sh
+pnpm run test:upstream
+```
+
+studio host TypeScript 테스트:
+
+```sh
+pnpm run test:studio
+```
+
 desktop Rust 테스트:
 
 ```sh
-npm run test:desktop
+pnpm run test:desktop
 ```
 
 desktop Rust clippy:
 
 ```sh
-npm run clippy:desktop
+pnpm run clippy:desktop
 ```
 
 upstream 갱신:

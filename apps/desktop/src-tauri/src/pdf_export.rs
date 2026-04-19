@@ -242,3 +242,85 @@ fn svgs_to_pdf(svg_pages: &[String]) -> Result<Vec<u8>, String> {
 
     Ok(pdf.finish())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ensure_pdf_path_accepts_pdf_case_insensitively() {
+        assert!(ensure_pdf_path(Path::new("out.pdf")).is_ok());
+        assert!(ensure_pdf_path(Path::new("out.PDF")).is_ok());
+    }
+
+    #[test]
+    fn ensure_pdf_path_rejects_non_pdf_paths() {
+        assert_eq!(
+            ensure_pdf_path(Path::new("out.hwp")).unwrap_err(),
+            "PDF 파일 경로는 .pdf 확장자여야 합니다"
+        );
+        assert!(ensure_pdf_path(Path::new("out")).is_err());
+    }
+
+    #[test]
+    fn resolve_page_range_defaults_to_all_pages() {
+        assert_eq!(resolve_page_range(None, 3).unwrap(), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn resolve_page_range_supports_open_ended_ranges() {
+        assert_eq!(
+            resolve_page_range(
+                Some(PageRange {
+                    start: Some(1),
+                    end: None,
+                }),
+                4,
+            )
+            .unwrap(),
+            vec![1, 2, 3]
+        );
+        assert_eq!(
+            resolve_page_range(
+                Some(PageRange {
+                    start: None,
+                    end: Some(1),
+                }),
+                4,
+            )
+            .unwrap(),
+            vec![0, 1]
+        );
+    }
+
+    #[test]
+    fn resolve_page_range_rejects_empty_and_invalid_ranges() {
+        assert_eq!(
+            resolve_page_range(None, 0).unwrap_err(),
+            "내보낼 페이지가 없습니다"
+        );
+        assert!(resolve_page_range(
+            Some(PageRange {
+                start: Some(2),
+                end: Some(1),
+            }),
+            4,
+        )
+        .unwrap_err()
+        .contains("페이지 범위가 올바르지 않습니다"));
+        assert!(resolve_page_range(
+            Some(PageRange {
+                start: Some(0),
+                end: Some(4),
+            }),
+            4,
+        )
+        .unwrap_err()
+        .contains("총 4페이지"));
+    }
+
+    #[test]
+    fn svgs_to_pdf_rejects_empty_pages() {
+        assert_eq!(svgs_to_pdf(&[]).unwrap_err(), "페이지가 없습니다");
+    }
+}

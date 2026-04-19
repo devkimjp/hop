@@ -117,3 +117,65 @@ fn document_path_from_path(path: PathBuf) -> Option<String> {
     }
     Some(path.to_string_lossy().to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn document_path_from_path_accepts_hwp_and_hwpx_case_insensitively() {
+        assert!(document_path_from_path(PathBuf::from("/tmp/doc.hwp")).is_some());
+        assert!(document_path_from_path(PathBuf::from("/tmp/doc.HWPX")).is_some());
+    }
+
+    #[test]
+    fn document_path_from_path_rejects_other_extensions() {
+        assert!(document_path_from_path(PathBuf::from("/tmp/doc.pdf")).is_none());
+        assert!(document_path_from_path(PathBuf::from("/tmp/doc")).is_none());
+    }
+
+    #[test]
+    fn document_path_from_arg_resolves_relative_paths_against_cwd() {
+        let dir = tempfile::tempdir().unwrap();
+        let cwd = dir.path().to_string_lossy();
+        let expected = dir.path().join("docs/sample.hwp");
+
+        assert_eq!(
+            document_path_from_arg("docs/sample.hwp", &cwd),
+            Some(expected.to_string_lossy().to_string())
+        );
+    }
+
+    #[test]
+    fn document_path_from_arg_accepts_file_urls() {
+        let path = std::env::temp_dir().join("sample.hwpx");
+        let url = tauri::Url::from_file_path(&path).unwrap().to_string();
+
+        assert_eq!(
+            document_path_from_arg(&url, "/ignored"),
+            Some(path.to_string_lossy().to_string())
+        );
+    }
+
+    #[test]
+    fn document_paths_from_args_filters_unsupported_args() {
+        let dir = tempfile::tempdir().unwrap();
+        let cwd = dir.path().to_string_lossy();
+        let paths = document_paths_from_args(
+            &[
+                "first.hwp".to_string(),
+                "notes.txt".to_string(),
+                "second.HWPX".to_string(),
+            ],
+            &cwd,
+        );
+
+        assert_eq!(
+            paths,
+            vec![
+                dir.path().join("first.hwp").to_string_lossy().to_string(),
+                dir.path().join("second.HWPX").to_string_lossy().to_string()
+            ]
+        );
+    }
+}

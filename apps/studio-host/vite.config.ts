@@ -1,12 +1,15 @@
-import { defineConfig } from 'vite';
-import { basename, relative, resolve } from 'node:path';
+import { defineConfig, normalizePath } from 'vite';
+import { createRequire } from 'node:module';
+import { basename, dirname, relative, resolve } from 'node:path';
 import { copyFileSync, createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import type { Plugin } from 'vite';
 
+const require = createRequire(import.meta.url);
 const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8'));
 const upstreamSrc = resolve(__dirname, '../../third_party/rhwp/rhwp-studio/src');
 const hopSrc = resolve(__dirname, 'src');
-const rhwpCore = resolve(__dirname, 'node_modules/@rhwp/core/rhwp.js');
+const rhwpCore = normalizePath(require.resolve('@rhwp/core/rhwp.js'));
+const rhwpCoreDir = dirname(rhwpCore);
 const fontAssetsDir = resolve(__dirname, '../../assets/fonts');
 
 const hopOverride = (id: string) => ({
@@ -87,6 +90,7 @@ export default defineConfig({
     fs: {
       allow: [
         __dirname,
+        rhwpCoreDir,
         fontAssetsDir,
         resolve(__dirname, '../../third_party/rhwp/rhwp-studio'),
       ],

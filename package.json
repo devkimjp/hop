@@ -5,14 +5,14 @@
   "description": "HOP is Open HWP",
   "license": "MIT",
   "type": "module",
-  "workspaces": [
-    "apps/studio-host",
-    "apps/desktop"
-  ],
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "build:studio": "npm --workspace apps/studio-host run build",
-    "build:desktop": "npm --workspace apps/desktop run build",
-    "tauri": "npm --workspace apps/desktop run tauri",
+    "build:studio": "pnpm --filter @golbin/hop-studio-host build",
+    "build:desktop": "pnpm --filter hop-desktop build",
+    "tauri": "pnpm --filter hop-desktop tauri",
+    "test": "pnpm run test:upstream && pnpm run test:studio && pnpm run test:desktop",
+    "test:upstream": "node --test tests/update-upstream.test.mjs",
+    "test:studio": "pnpm --filter @golbin/hop-studio-host test",
     "test:desktop": "cd apps/desktop/src-tauri && cargo test",
     "clippy:desktop": "cd apps/desktop/src-tauri && cargo clippy -- -D warnings"
   }

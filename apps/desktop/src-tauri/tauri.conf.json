@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "identifier": "net.golbin.hop",
   "build": {
-    "beforeDevCommand": "cd ../.. && npm --workspace apps/studio-host run dev",
-    "beforeBuildCommand": "cd ../.. && npm --workspace apps/studio-host run build",
+    "beforeDevCommand": "cd ../.. && pnpm --filter @golbin/hop-studio-host dev",
+    "beforeBuildCommand": "cd ../.. && pnpm --filter @golbin/hop-studio-host build",
     "devUrl": "http://127.0.0.1:7700",
     "frontendDist": "../../studio-host/dist"
   },
