@@ -22,7 +22,7 @@ pub fn create_editor_window(app: &AppHandle) -> Result<String, String> {
         .center()
         .build()
         .map_err(|e| format!("새 창 생성 실패: {}", e))?;
-    install_editor_window_size_guard(&window);
+    install_editor_window_minimum(&window);
     attach_document_drop_handler(app, &window);
     let _ = window.set_focus();
 
@@ -76,41 +76,9 @@ fn clamped_new_window_dimension(preferred: f64, min: f64, max: f64) -> f64 {
     preferred.min(max).max(min)
 }
 
-pub fn install_editor_window_size_guard(window: &WebviewWindow) {
-    enforce_editor_window_minimum(window);
-
-    let guarded_window = window.clone();
-    window.on_window_event(move |event| {
-        if matches!(event, WindowEvent::Resized(_)) {
-            enforce_editor_window_minimum(&guarded_window);
-        }
-    });
-}
-
-fn enforce_editor_window_minimum(window: &WebviewWindow) {
+pub fn install_editor_window_minimum(window: &WebviewWindow) {
     let minimum = LogicalSize::new(MIN_EDITOR_WINDOW_WIDTH, MIN_EDITOR_WINDOW_HEIGHT);
     let _ = window.set_min_size(Some(Size::Logical(minimum)));
-
-    let Ok(scale_factor) = window.scale_factor() else {
-        return;
-    };
-    if scale_factor <= 0.0 {
-        return;
-    }
-
-    let Ok(inner_size) = window.inner_size() else {
-        return;
-    };
-    let logical_size = inner_size.to_logical::<f64>(scale_factor);
-    if logical_size.width >= MIN_EDITOR_WINDOW_WIDTH
-        && logical_size.height >= MIN_EDITOR_WINDOW_HEIGHT
-    {
-        return;
-    }
-
-    let width = logical_size.width.max(MIN_EDITOR_WINDOW_WIDTH);
-    let height = logical_size.height.max(MIN_EDITOR_WINDOW_HEIGHT);
-    let _ = window.set_size(Size::Logical(LogicalSize::new(width, height)));
 }
 
 pub fn attach_document_drop_handler(app: &AppHandle, window: &WebviewWindow) {

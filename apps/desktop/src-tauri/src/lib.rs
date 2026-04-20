@@ -40,7 +40,7 @@ pub fn run() {
             #[cfg(not(target_os = "macos"))]
             app.set_menu(tauri::menu::Menu::new(app)?)?;
             if let Some(window) = app.get_webview_window("main") {
-                windows::install_editor_window_size_guard(&window);
+                windows::install_editor_window_minimum(&window);
                 windows::attach_document_drop_handler(app.handle(), &window);
             }
             #[cfg(any(target_os = "macos", windows, target_os = "linux"))]
