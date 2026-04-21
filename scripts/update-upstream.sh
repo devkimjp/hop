@@ -4,6 +4,7 @@ set -euo pipefail
 RUN_CHECKS="${RUN_CHECKS:-0}"
 UPSTREAM_BRANCH="${UPSTREAM_BRANCH:-main}"
 UPSTREAM_REMOTE="${UPSTREAM_REMOTE:-origin}"
+UPSTREAM_REF="${UPSTREAM_REF:-}"
 
 repo_root="$(git rev-parse --show-toplevel)"
 submodule_dir="$repo_root/third_party/rhwp"
@@ -19,8 +20,15 @@ if [[ -n "$(git -C "$submodule_dir" status --porcelain)" ]]; then
   exit 1
 fi
 
-git -C "$submodule_dir" fetch "$UPSTREAM_REMOTE"
-git -C "$submodule_dir" checkout "$UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+git -C "$submodule_dir" fetch "$UPSTREAM_REMOTE" --tags
+
+if [[ -n "$UPSTREAM_REF" ]]; then
+  git -C "$submodule_dir" checkout "$UPSTREAM_REF"
+  target_desc="$UPSTREAM_REF"
+else
+  git -C "$submodule_dir" checkout "$UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+  target_desc="$UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+fi
 
 new_commit="$(git -C "$submodule_dir" rev-parse HEAD)"
 
@@ -36,7 +44,7 @@ cat <<EOF
 Upstream submodule updated.
 
 Path: third_party/rhwp
-Branch: $UPSTREAM_BRANCH
+Target: $target_desc
 Commit: $new_commit
 
 Next:

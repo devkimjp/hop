@@ -22,6 +22,9 @@ vi.mock('@/core/bridge-factory', () => ({
 describe('desktop events', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    tauriListen.mockReset();
+    currentWindow.listen.mockReset();
+    currentWindow.onCloseRequested.mockReset();
     delete (globalThis as { window?: unknown }).window;
     delete (globalThis as { document?: unknown }).document;
   });
@@ -36,6 +39,7 @@ describe('desktop events', () => {
       dispatcher: { dispatch: vi.fn() } as never,
       eventBus: { emit: vi.fn() } as never,
       setMessage: vi.fn(),
+      onUpdateState: vi.fn(),
     });
 
     expect(tauriListen).not.toHaveBeenCalled();
@@ -43,7 +47,7 @@ describe('desktop events', () => {
   });
 
   it('opens the latest supported document path from app events and pending paths', async () => {
-    const { windowHandlers } = installTauriWindowMocks();
+    const { windowHandlers } = installTauriMocks();
     (globalThis as { window?: unknown }).window = { __TAURI_INTERNALS__: {} };
     installDocumentStub();
 
@@ -59,6 +63,7 @@ describe('desktop events', () => {
       dispatcher: { dispatch: vi.fn() } as never,
       eventBus: eventBus as never,
       setMessage: vi.fn(),
+      onUpdateState: vi.fn(),
     });
 
     await windowHandlers.get('hop-open-paths')?.({
@@ -70,7 +75,7 @@ describe('desktop events', () => {
   });
 
   it('reports unsupported dropped/opened paths without calling the bridge', async () => {
-    const { windowHandlers } = installTauriWindowMocks();
+    const { windowHandlers } = installTauriMocks();
     (globalThis as { window?: unknown }).window = { __TAURI_INTERNALS__: {} };
     installDocumentStub();
 
@@ -85,6 +90,7 @@ describe('desktop events', () => {
       dispatcher: { dispatch: vi.fn() } as never,
       eventBus: { emit: vi.fn() } as never,
       setMessage,
+      onUpdateState: vi.fn(),
     });
 
     await windowHandlers.get('hop-open-paths')?.({
@@ -96,7 +102,7 @@ describe('desktop events', () => {
   });
 
   it('toggles drag state only for supported document paths', async () => {
-    const { windowHandlers } = installTauriWindowMocks();
+    const { windowHandlers } = installTauriMocks();
     (globalThis as { window?: unknown }).window = { __TAURI_INTERNALS__: {} };
     const { classList } = installDocumentStub();
     const setMessage = vi.fn();
@@ -106,6 +112,7 @@ describe('desktop events', () => {
       dispatcher: { dispatch: vi.fn() } as never,
       eventBus: { emit: vi.fn() } as never,
       setMessage,
+      onUpdateState: vi.fn(),
     });
 
     await windowHandlers.get('tauri://drag-enter')?.({ payload: { paths: ['notes.txt'] } });
@@ -122,7 +129,7 @@ describe('desktop events', () => {
   });
 
   it('routes menu commands and close requests through desktop adapters', async () => {
-    const { windowHandlers, getCloseHandler } = installTauriWindowMocks();
+    const { windowHandlers, getCloseHandler } = installTauriMocks();
     (globalThis as { window?: unknown }).window = { __TAURI_INTERNALS__: {} };
     installDocumentStub();
 
@@ -138,6 +145,7 @@ describe('desktop events', () => {
       dispatcher: dispatcher as never,
       eventBus: { emit: vi.fn() } as never,
       setMessage: vi.fn(),
+      onUpdateState: vi.fn(),
     });
 
     await windowHandlers.get('hop-menu-command')?.({ payload: 'file:save' });
@@ -152,7 +160,7 @@ describe('desktop events', () => {
 
   it('falls back to native close when clean close confirmation fails', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const { getCloseHandler } = installTauriWindowMocks();
+    const { getCloseHandler } = installTauriMocks();
     (globalThis as { window?: unknown }).window = { __TAURI_INTERNALS__: {} };
     installDocumentStub();
 
@@ -169,6 +177,7 @@ describe('desktop events', () => {
       dispatcher: { dispatch: vi.fn() } as never,
       eventBus: { emit: vi.fn() } as never,
       setMessage,
+      onUpdateState: vi.fn(),
     });
 
     const preventDefault = vi.fn();
@@ -181,7 +190,7 @@ describe('desktop events', () => {
 
   it('keeps dirty windows open when close confirmation fails', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const { getCloseHandler } = installTauriWindowMocks();
+    const { getCloseHandler } = installTauriMocks();
     (globalThis as { window?: unknown }).window = { __TAURI_INTERNALS__: {} };
     installDocumentStub();
 
@@ -198,6 +207,7 @@ describe('desktop events', () => {
       dispatcher: { dispatch: vi.fn() } as never,
       eventBus: { emit: vi.fn() } as never,
       setMessage,
+      onUpdateState: vi.fn(),
     });
 
     const preventDefault = vi.fn();
@@ -216,11 +226,80 @@ describe('desktop events', () => {
       createNewDocumentAsync: vi.fn().mockResolvedValue(payload),
     })).resolves.toBe(payload);
   });
+
+  it('hydrates update state and listens for later updater events', async () => {
+    const { eventHandlers } = installTauriMocks();
+    (globalThis as { window?: unknown }).window = { __TAURI_INTERNALS__: {} };
+    installDocumentStub();
+
+    const onUpdateState = vi.fn();
+    const bridge = {
+      takePendingOpenPaths: vi.fn().mockResolvedValue([]),
+      getUpdateState: vi.fn().mockResolvedValue({
+        status: 'available',
+        version: '0.1.3',
+      }),
+    };
+
+    await setupDesktopEvents({
+      bridge,
+      dispatcher: { dispatch: vi.fn() } as never,
+      eventBus: { emit: vi.fn() } as never,
+      setMessage: vi.fn(),
+      onUpdateState,
+    });
+
+    expect(onUpdateState).toHaveBeenCalledWith({
+      status: 'available',
+      version: '0.1.3',
+    });
+
+    await eventHandlers.get('hop-update-state')?.({
+      payload: { status: 'ready', version: '0.1.3' },
+    });
+
+    expect(onUpdateState).toHaveBeenCalledWith({
+      status: 'ready',
+      version: '0.1.3',
+    });
+  });
+
+  it('does not fail desktop event setup when updater state hydration throws', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    installTauriMocks();
+    (globalThis as { window?: unknown }).window = { __TAURI_INTERNALS__: {} };
+    installDocumentStub();
+
+    const onUpdateState = vi.fn();
+    const bridge = {
+      takePendingOpenPaths: vi.fn().mockResolvedValue([]),
+      getUpdateState: vi.fn().mockRejectedValue(new Error('updater unavailable')),
+    };
+
+    await expect(setupDesktopEvents({
+      bridge,
+      dispatcher: { dispatch: vi.fn() } as never,
+      eventBus: { emit: vi.fn() } as never,
+      setMessage: vi.fn(),
+      onUpdateState,
+    })).resolves.toBeUndefined();
+
+    expect(onUpdateState).not.toHaveBeenCalled();
+    expect(console.warn).toHaveBeenCalledWith(
+      '[desktop-events] updater state hydrate failed:',
+      expect.any(Error),
+    );
+  });
 });
 
-function installTauriWindowMocks() {
+function installTauriMocks() {
   const windowHandlers = new Map<string, (event: { payload: unknown }) => unknown>();
+  const eventHandlers = new Map<string, (event: { payload: unknown }) => unknown>();
   let closeHandler: ((event: { preventDefault(): void }) => Promise<void>) | undefined;
+  tauriListen.mockImplementation(async (name: string, handler: (event: { payload: unknown }) => unknown) => {
+    eventHandlers.set(name, handler);
+    return vi.fn();
+  });
   currentWindow.listen.mockImplementation(async (name: string, handler: (event: { payload: unknown }) => unknown) => {
     windowHandlers.set(name, handler);
     return vi.fn();
@@ -230,6 +309,7 @@ function installTauriWindowMocks() {
     return vi.fn();
   });
   return {
+    eventHandlers,
     windowHandlers,
     getCloseHandler: () => closeHandler,
   };

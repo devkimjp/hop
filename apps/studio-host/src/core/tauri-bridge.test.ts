@@ -179,6 +179,25 @@ describe('TauriBridge', () => {
     expect(document.title).toBe('• source.hwp - HOP');
   });
 
+  it('proxies updater commands through the Tauri bridge', async () => {
+    const bridge = new TauriBridge();
+    invokeMock
+      .mockResolvedValueOnce({ status: 'available', version: '0.1.3' })
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined);
+
+    await expect(bridge.getUpdateState()).resolves.toEqual({
+      status: 'available',
+      version: '0.1.3',
+    });
+    await expect(bridge.startUpdateInstall()).resolves.toBeUndefined();
+    await expect(bridge.restartToApplyUpdate()).resolves.toBeUndefined();
+
+    expect(invokeMock).toHaveBeenNthCalledWith(1, 'get_update_state', {});
+    expect(invokeMock).toHaveBeenNthCalledWith(2, 'start_update_install', {});
+    expect(invokeMock).toHaveBeenNthCalledWith(3, 'restart_to_apply_update', {});
+  });
+
   it('blocks direct save for HWPX sources', async () => {
     const bridge = new TauriBridge();
     applyOpenResult(bridge, {

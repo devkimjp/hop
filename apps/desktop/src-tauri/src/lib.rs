@@ -19,6 +19,7 @@ use commands::{
     take_pending_open_paths,
 };
 use state::AppState;
+use updates::{get_update_state, restart_to_apply_update, start_update_install};
 
 pub fn run() {
     let app = tauri::Builder::default()
@@ -68,6 +69,9 @@ pub fn run() {
             check_external_modification,
             take_pending_open_paths,
             reveal_in_folder,
+            get_update_state,
+            start_update_install,
+            restart_to_apply_update,
         ])
         .build(tauri::generate_context!())
         .expect("failed to build HOP desktop app");

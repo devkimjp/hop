@@ -106,6 +106,7 @@ pub struct DocumentSessionManager {
 pub struct AppState {
     pub sessions: Mutex<DocumentSessionManager>,
     pub pending_open_paths: Mutex<Vec<String>>,
+    pub updater: Mutex<crate::updates::UpdateManagerState>,
 }
 
 impl DocumentSessionManager {
@@ -886,7 +887,10 @@ mod tests {
             .unwrap_err();
 
         assert!(error.contains("문서 revision이 변경되었습니다"));
-        assert_eq!(manager.session(&opened.doc_id).unwrap().revision, opened.revision);
+        assert_eq!(
+            manager.session(&opened.doc_id).unwrap().revision,
+            opened.revision
+        );
         assert!(!manager.session(&opened.doc_id).unwrap().dirty);
     }
 
